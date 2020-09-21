@@ -1,0 +1,9 @@
+All test runs were run for 100 iterations on a machine with 2 cores and and 2 a maximum of 2 threads per core.
+
+datapt
+The results of the timing tests for datapt can be seen in dataptGraph.png.
+In the graph, it was shown that on the testing machine, 1 thread was fastest until 10000 points
+At 100000 points, 2 threads is fastest (although on multiple runs sometimes 4 threads are fastest)
+Once 300000 points is reached, 4 threads is fastest and 2 threads is second fastest. tests done with larger numbers of points continue the trend
+
+taskpt

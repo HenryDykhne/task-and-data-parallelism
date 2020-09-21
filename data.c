@@ -8,22 +8,23 @@
 
 #include<stdio.h>
 #include<stdlib.h>
-#include<time.h>
 #include<math.h>
 #include<string.h>
+#include<time.h>
+#include<pthread.h>
 #ifndef NOGRAPHICS
 #include<unistd.h>
 #include<ncurses.h>
-
 #endif
 
 #define DELAY 10000
-
 	// maximum screen size, both height and width
 #define SCREENSIZE 100
 	// default number of iterations to run before exiting, only used
 	// when graphics are turned off
 #define ITERATIONS 1000
+
+#define MAX_THREADS 32
 
 	// number of points
 int pointCount;
@@ -38,7 +39,8 @@ float transformArray[4][4];
 char frameBuffer[SCREENSIZE][SCREENSIZE];
 float depthBuffer[SCREENSIZE][SCREENSIZE];
 
-
+   //threads run
+int threadCount = 1;
 
 void vectorMult(float a[4], float b[4], float c[4][4]);
 
@@ -47,8 +49,6 @@ void vectorMult(float a[4], float b[4], float c[4][4]);
 	// maximum screen dimensions
 int max_y = 0, max_x = 0;
 #endif
-
-
 
 
 #ifndef NOGRAPHICS
@@ -303,10 +303,43 @@ int i, j;
    }
 }
 
+void *PthVectorMult (void* rank) {
+   //determine start and end to process
+   long myRank = (long) rank;
+   int localPointCount = ceil((double) pointCount/threadCount); 
+   int firstRow = myRank*localPointCount;
+   int lastRow = (myRank+1)*localPointCount - 1;
+
+   //dealing with non cleanly dividing amounts of points/threads
+   if(lastRow >= pointCount){
+      lastRow = pointCount-1;
+   }
+
+   // transform the points using the transformation matrix
+	// store the results of the transformation in the drawing array
+   for (int i=firstRow; i<=lastRow; i++) {
+      vectorMult(drawArray[i], pointArray[i], transformArray);
+	// scale the points for curses screen resolution
+      drawArray[i][0] *= 20;
+      drawArray[i][1] *= 20;
+      drawArray[i][0] += 50;
+      drawArray[i][1] += 50;
+
+      drawArray[i][2] *= 20;
+      drawArray[i][2] += 50;
+   }
+
+   return NULL;
+}
+
 void movePoints() {
-static int counter = 1;
-int i; 
-int x, y;
+   static int counter = 1;
+   int i; 
+   int x, y;
+
+   //thread related variables
+   long thread;
+   pthread_t* threadHandles;
 
 	// initialize transformation matrix
 	// this needs to be done before the transformation is performed
@@ -318,19 +351,17 @@ int x, y;
    yRot(counter);
    counter++;
 
-	// transform the points using the transformation matrix
-	// store the results of the transformation in the drawing array
-   for (i=0; i<pointCount; i++) {
-      vectorMult(drawArray[i], pointArray[i], transformArray);
-	// scale the points for curses screen resolution
-      drawArray[i][0] *= 20;
-      drawArray[i][1] *= 20;
-      drawArray[i][0] += 50;
-      drawArray[i][1] += 50;
+   //setting up threads
+   threadHandles = malloc(threadCount*sizeof(pthread_t));
 
-      drawArray[i][2] *= 20;
-      drawArray[i][2] += 50;
-   }
+   for (thread = 0; thread < threadCount; thread++)
+      pthread_create(&threadHandles[thread], NULL,
+         PthVectorMult, (void*) thread);
+
+   for (thread = 0; thread < threadCount; thread++)
+      pthread_join(threadHandles[thread], NULL);
+
+   free(threadHandles);//check if needed
 
 	// clears buffers before drawing screen
    clearBuffers();
@@ -382,13 +413,18 @@ int drawCube, drawRandom;
             drawRandom = 1;
             sscanf(argv[argPtr+1], "%d", &pointCount);
             argPtr += 2;
+         } else if (strcmp(argv[argPtr], "-threads") == 0) {
+            sscanf(argv[argPtr+1], "%d", &threadCount);
+            argPtr += 2;
          } else {
-            printf("USAGE: %s <-i iterations> <-cube | -points #>\n", argv[0]);
+            printf("USAGE: %s <-i iterations> <-cube | -points #> <-threads #> \n", argv[0]);
             printf(" iterations -the number of times the population will be updated\n");
-	    printf("    the number of iterations only affects the non-curses program\n");
-	    printf(" the curses program exits when q is pressed\n");
-	    printf(" choose either -cube to draw the cube shape or -points # to\n");
-	    printf("    draw random points where # is an integer number of points to draw\n");
+	         printf("    the number of iterations only affects the non-curses program\n");
+	         printf(" the curses program exits when q is pressed\n");
+	         printf(" choose either -cube to draw the cube shape or -points # to\n");
+	         printf("    draw random points where # is an integer number of points to draw\n");
+            printf(" threads -the number of threads the program will be run on\n");
+
             exit(1);
          }
       }
@@ -402,6 +438,11 @@ int drawCube, drawRandom;
       randomPointArray();
    else {
       printf("You must choose either <-cube> or <-points #> on the command line.\n");
+      exit(1);
+   }
+
+   if (threadCount > MAX_THREADS || threadCount <= 0){
+      printf("Max allowed threads is %d. Min allowed threads is 1. If unspecified, number of threads are set to 1.\n", MAX_THREADS);
       exit(1);
    }
 
@@ -430,9 +471,10 @@ int drawCube, drawRandom;
 	// calculate movement of points but do not use ncurses to draw
 #ifdef NOGRAPHICS
    printf("Number of iterations %d\n", count);
+   printf("Number of threads %d\n", threadCount);
 
 	/*** Start timing here ***/
-   struct timespec start, end;   
+   struct timespec start, end;  
    double elapsed;
    clock_gettime(CLOCK_MONOTONIC, &start);
 

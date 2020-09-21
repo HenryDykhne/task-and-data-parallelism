@@ -11,6 +11,7 @@
 #include<time.h>
 #include<math.h>
 #include<string.h>
+#include<pthread.h>
 #ifndef NOGRAPHICS
 #include<unistd.h>
 #include<ncurses.h>
