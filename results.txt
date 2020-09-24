@@ -1,9 +1,13 @@
-All test runs were run for 100 iterations on a machine with 2 cores and and 2 a maximum of 2 threads per core.
+All test runs were run for 1,000 iterations on a machine with 2 cores and and 2 a maximum of 2 threads per core.
 
-datapt
-The results of the timing tests for datapt can be seen in dataptGraph.png.
-In the graph, it was shown that on the testing machine, 1 thread was fastest until 10000 points
-At 100000 points, 2 threads is fastest (although on multiple runs sometimes 4 threads are fastest)
-Once 300000 points is reached, 4 threads is fastest and 2 threads is second fastest. tests done with larger numbers of points continue the trend
+datapt:
+The results of the timing tests for datapt can be seen in dataGraph.png.
+In the graph, it was shown that on the testing machine, 1 thread was fastest until 1,000 points.
+2 threads is fastest between 1,000 points and 100,000.
+Once 1,000,000 points is reached, 4 threads is fastest and 2 threads is second fastest. tests done with larger numbers of points continue the trend.
 
-taskpt
+taskpt:
+The results of the timing tests for datapt can be seen in taskGraph.png.
+The timing tests show that taskpt is over 200 times slower than the non task paralell version no matter the number of points.
+
+From these results, it is clear that for this task, data parallelism requires a large amount of points to be effective, and task paralelism is not effective at all.

@@ -33,6 +33,9 @@ float **pointArray;
 	// array of points after transformation
 float **drawArray;
 
+	// mutex array to control array a. initialized in main
+pthread_mutex_t a_mutex[4];
+
 	// transformation matrix
 float transformArray[4][4];
 	// display buffers
@@ -105,19 +108,47 @@ int row, col, element;
    }
 }
 
+//this function sets all the values in the array to zero
+void *setAZero(void* array) {
+   float *a = (float *) array;
+   for (int col=0; col<4; col++) {
+      a[col] = 0.0; 
+      pthread_mutex_unlock(&a_mutex[col]);
+   }
+   return NULL;
+}
 
 	/* calculates the product of vector b and matrix c
            stores the result in vector a */
 void vectorMult(float a[4], float b[4], float c[4][4]) {
-int col, element;
+   int col, element, wait;
+   long thread;
+   pthread_t* threadHandles;
 
+   //setting up threads
+   threadHandles = malloc(1*sizeof(pthread_t));
 
    for (col=0; col<4; col++) {
-      a[col] = 0.0; 
+      pthread_mutex_lock(&a_mutex[col]);
+   }
+
+   pthread_create(&threadHandles[0], NULL, setAZero, (void*) a);
+
+   
+   for (col=0; col<4; col++) {
+      //mutex ensures it is safe to edit value
+      pthread_mutex_lock(&a_mutex[col]);
+      
       for (element=0; element<4; element++) {
          a[col] += b[element] * c[element][col]; 
       }
+   
+      //gets out of the way to allow other thread to advance
+      pthread_mutex_unlock(&a_mutex[col]);
    }
+   
+   pthread_join(threadHandles[0], NULL);
+   free(threadHandles);
 
 }
 
@@ -291,8 +322,8 @@ void translate(float x, float y, float z) {
    transformArray[3][2] = z;
 }
 
-void clearBuffers() {
-int i, j;
+void *clearBuffers() {
+   int i, j;
 
 	// empty the frame buffer
 	// set the depth buffer to a large distance
@@ -302,12 +333,19 @@ int i, j;
          depthBuffer[i][j] = -1000.0; 
       }
    }
+   return NULL;
 }
 
 void movePoints() {
-static int counter = 1;
-int i; 
-int x, y;
+   static int counter = 1;
+   int i; 
+   int x, y;
+
+   long thread;
+   pthread_t* threadHandles;
+
+   //setting up threads
+   threadHandles = malloc(1*sizeof(pthread_t));
 
 	// initialize transformation matrix
 	// this needs to be done before the transformation is performed
@@ -318,6 +356,9 @@ int x, y;
    xRot(counter);
    yRot(counter);
    counter++;
+
+   // clears buffers in diffrent thread
+   pthread_create(&threadHandles[0], NULL, clearBuffers, (void*) NULL);
 
 	// transform the points using the transformation matrix
 	// store the results of the transformation in the drawing array
@@ -333,8 +374,7 @@ int x, y;
       drawArray[i][2] += 50;
    }
 
-	// clears buffers before drawing screen
-   clearBuffers();
+   pthread_join(threadHandles[0], NULL);
 
 	// draw the screen
 	// adds points to the frame buffer, use depth buffer to
@@ -353,12 +393,16 @@ int x, y;
       }
    }
 
+   free(threadHandles);
 }
 
 int main(int argc, char *argv[]) {
-int i, count;
-int argPtr;
-int drawCube, drawRandom;
+   int i, count;
+   int argPtr;
+   int drawCube, drawRandom;
+   for(i = 0; i<4; i++){
+      (&a_mutex[i], NULL);
+   }
 
 	// set number of iterations, only used for timing tests 
 	// not used in curses version
@@ -444,7 +488,7 @@ int drawCube, drawRandom;
 	/*** End timing here ***/
    clock_gettime(CLOCK_MONOTONIC, &end);
    elapsed = (end.tv_sec - start.tv_sec) + ((end.tv_nsec - start.tv_nsec) / 1000000000.0);
-   printf("graphicspt took %f seconds to execute \n", elapsed); 
+   printf("taskpt took %f seconds to execute \n", elapsed); 
 #endif
 
 #ifndef NOGRAPHICS

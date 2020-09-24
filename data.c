@@ -503,7 +503,7 @@ int drawCube, drawRandom;
 	/*** End timing here ***/
    clock_gettime(CLOCK_MONOTONIC, &end);
    elapsed = (end.tv_sec - start.tv_sec) + ((end.tv_nsec - start.tv_nsec) / 1000000000.0);
-   printf("graphicspt took %f seconds to execute \n", elapsed); 
+   printf("datapt took %f seconds to execute \n", elapsed); 
 #endif
 
 #ifndef NOGRAPHICS
