@@ -126,11 +126,11 @@ int i;
 
    pointArray = malloc(sizeof(float *) * pointCount);
    for(i=0; i<pointCount; i++)
-      pointArray[i] = malloc(sizeof(float) * 3);
+      pointArray[i] = malloc(sizeof(float) * 4);
 
    drawArray = malloc(sizeof(float *) * pointCount);
    for(i=0; i<pointCount; i++)
-      drawArray[i] = malloc(sizeof(float) * 3);
+      drawArray[i] = malloc(sizeof(float) * 4);
 }
 
 void cubePointArray() {
