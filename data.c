@@ -332,10 +332,41 @@ void *PthVectorMult (void* rank) {
    return NULL;
 }
 
+void *PthDrawScreen (void* rank) {
+   //determine start and end to process
+   long myRank = (long) rank;
+   int localPointCount = ceil((double) pointCount/threadCount); 
+   int firstRow = myRank*localPointCount;
+   int lastRow = (myRank+1)*localPointCount - 1;
+
+   //dealing with non cleanly dividing amounts of points/threads
+   if(lastRow >= pointCount){
+      lastRow = pointCount-1;
+   }
+
+   // draw the screen
+	// adds points to the frame buffer, use depth buffer to
+	// sort points based upon distance from the viewer
+   int x, y;
+   for (int i=firstRow; i<=lastRow; i++) {
+      x = (int) drawArray[i][0];
+      y = (int) drawArray[i][1];
+      if (depthBuffer[x][y] < drawArray[i][2]) { 
+         if (drawArray[i][2] > 60.0)
+            frameBuffer[x][y] = 'X'; 
+         else if (drawArray[i][2] < 40.0)
+            frameBuffer[x][y] = '.'; 
+         else
+            frameBuffer[x][y] = 'o'; 
+         depthBuffer[x][y] = drawArray[i][2];
+      }
+   }
+
+   return NULL;
+}
+
 void movePoints() {
    static int counter = 1;
-   int i; 
-   int x, y;
 
    //thread related variables
    long thread;
@@ -355,34 +386,21 @@ void movePoints() {
    threadHandles = malloc(threadCount*sizeof(pthread_t));
 
    for (thread = 0; thread < threadCount; thread++)
-      pthread_create(&threadHandles[thread], NULL,
-         PthVectorMult, (void*) thread);
+      pthread_create(&threadHandles[thread], NULL, PthVectorMult, (void*) thread);
 
    for (thread = 0; thread < threadCount; thread++)
       pthread_join(threadHandles[thread], NULL);
 
-   free(threadHandles);//check if needed
-
 	// clears buffers before drawing screen
    clearBuffers();
 
-	// draw the screen
-	// adds points to the frame buffer, use depth buffer to
-	// sort points based upon distance from the viewer
-   for (i=0; i<pointCount; i++) {
-      x = (int) drawArray[i][0];
-      y = (int) drawArray[i][1];
-      if (depthBuffer[x][y] < drawArray[i][2]) { 
-         if (drawArray[i][2] > 60.0)
-            frameBuffer[x][y] = 'X'; 
-         else if (drawArray[i][2] < 40.0)
-            frameBuffer[x][y] = '.'; 
-         else
-            frameBuffer[x][y] = 'o'; 
-         depthBuffer[x][y] = drawArray[i][2];
-      }
-   }
+   for (thread = 0; thread < threadCount; thread++)
+      pthread_create(&threadHandles[thread], NULL, PthDrawScreen, (void*) thread);
 
+   for (thread = 0; thread < threadCount; thread++)
+      pthread_join(threadHandles[thread], NULL);
+	
+   free(threadHandles);//check if needed
 }
 
 int main(int argc, char *argv[]) {
