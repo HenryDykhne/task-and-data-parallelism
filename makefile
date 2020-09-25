@@ -18,3 +18,6 @@ task: task.c
 
 taskpt: task.c
 	gcc task.c -o taskpt -lm -DNOGRAPHICS -pthread
+
+clean:
+	rm graphics graphicspt data datapt task taskpt
