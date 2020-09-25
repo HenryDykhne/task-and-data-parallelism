@@ -385,6 +385,7 @@ void movePoints() {
    //setting up threads
    threadHandles = malloc(threadCount*sizeof(pthread_t));
 
+   //transform points in paralell
    for (thread = 0; thread < threadCount; thread++)
       pthread_create(&threadHandles[thread], NULL, PthVectorMult, (void*) thread);
 
